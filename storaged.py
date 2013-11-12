@@ -46,6 +46,11 @@ class data:
         global config
         # Grab the chunk and calc the sums
         chunk = web.input(file={})['file'].value
+        if len(chunk) != config.getBlockSize():
+            # The chunk is wrong.  Return a 400 bad request error. Log info
+            # about the remote in the future.
+            logging.warning("Somebody's passing around a bad brownie.")
+            return web.badrequest()
         mdfive = hashlib.md5(chunk).hexdigest()
         shaone = hashlib.sha1(chunk).hexdigest()
         # Build the path and write the file
@@ -67,11 +72,16 @@ class data:
         verifyChunk = open(path, 'rb').read()
         verifyMdfive = hashlib.md5(verifyChunk).hexdigest()
         verifyShaone = hashlib.sha1(verifyChunk).hexdigest()
-        # Return a 200 OK (return the sums for now)
+        # If the sums match, return a 200 OK (return the sums for now)
+        # otherwise return a 500 error (we have a file that doesn't match)
+        if verifyMdfive != mdfive or verifyShaone != shaone:
+            # Return an error here
+            logging.error("There's a skeleton in my closet! %s" % (path))
+            return web.internalerror()
         result = "Provided sums:\n"
         result += "  MD5:  %s\n" % (hashMD5)
         result += "  SHA1: %s\n" % (hashSHA1)
-        result += "Calculated sums:\n"
+        result += "Calculated sums: %d\n" % (len(chunk))
         result += "  MD5:  %s\n" % (mdfive)
         result += "  MD5:  %s\n" % (shaone)
         result += "Verified sums: %s\n" % (path)
@@ -121,7 +131,7 @@ class dpyfsConfig:
     
     # Grab the blockSize and convert to bytes from kilobytes
     def getBlockSize(self):
-        return int(blocksize) * 1024
+        return int(self.blocksize) * 1024
     
     # Grab the storage directory (make absolute path if needed)
     def getStorageDir(self):
