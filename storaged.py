@@ -10,19 +10,21 @@ import argparse
 import ConfigParser
 import hashlib
 import web
+import os
 
 ### GLOBALS ####################################################################
+config = None
 
 ### FUNCTIONS ##################################################################
 # View function for the good ol' 404
 def notFound():
-    return web.notfound("404 Not Found\n"
-                        "Somethin's amiss.  Might want to check them URLs again.")
+    return web.notfound("<html><body><h1>404 Not Found</h1>\n"
+                        "<p>Somethin's amiss.  Might want to check them URLs again.</p></body></html>")
 
 # View function for a little internal error love
 def internalError():
-    return web.internalerror("500 Internal Server Error\n"
-                             "I guess I've lost my tools in my hands again.")
+    return web.internalerror("<html><body><h1>500 Internal Server Error</h1>\n"
+                             "<p>I guess I've lost my tools in my hands again.</p></body></html>")
 
 ### CLASSES ####################################################################
 # Controller class for redirecting the root to another place
@@ -41,7 +43,41 @@ class data:
         return "No data here currently."
 
     def PUT(self, hashMD5, hashSHA1):
-        return "Not yet implemented.  Coming soon!"
+        global config
+        # Grab the chunk and calc the sums
+        chunk = web.input(file={})['file'].value
+        mdfive = hashlib.md5(chunk).hexdigest()
+        shaone = hashlib.sha1(chunk).hexdigest()
+        # Build the path and write the file
+        path = "%s/" % (config.getStorageDir())
+        for i in range(0, len(mdfive), 3):
+            path += "%s/" % (mdfive[i:i+3])
+        if not os.path.exists(path):
+            # I've read that this isn't the best way to do this, but I can
+            # always make it better later...
+            os.makedirs(path)
+        path += "%s.obj" % (shaone)
+        ## At this point I should see if the file exists.  If it does, verify
+        ## checksums, otherwise write the file and then verify the checksums
+        if not os.path.isfile(path):
+            # Write the file
+            logging.debug("Adding new chunk at: %s" % (path))
+            writeResult = open(path, 'wb').write(chunk)
+        # Read the file back and verify the sums
+        verifyChunk = open(path, 'rb').read()
+        verifyMdfive = hashlib.md5(verifyChunk).hexdigest()
+        verifyShaone = hashlib.sha1(verifyChunk).hexdigest()
+        # Return a 200 OK (return the sums for now)
+        result = "Provided sums:\n"
+        result += "  MD5:  %s\n" % (hashMD5)
+        result += "  SHA1: %s\n" % (hashSHA1)
+        result += "Calculated sums:\n"
+        result += "  MD5:  %s\n" % (mdfive)
+        result += "  MD5:  %s\n" % (shaone)
+        result += "Verified sums: %s\n" % (path)
+        result += "  MD5:  %s\n" % (verifyMdfive)
+        result += "  MD5:  %s" % (verifyShaone)
+        return result
 
     def DELETE(self, hashMD5, hashSHA1):
         return "Not yet implemented.  Coming soon!"
@@ -54,9 +90,11 @@ class data:
 class dpyfsConfig:
     configFile = '/etc/dpyfs/storaged.conf'
     configSection = 'storage'
+    # Config file entries always come back lower case.
     ipaddr = '0.0.0.0'
-    port = 8080
-    storageDir = '/var/dpyfs/data'
+    port = '8080'
+    storagedir = '/var/dpyfs/data'
+    blocksize = '8'
 
     # Initialize the configuration class
     def __init__(self, conFile = None):
@@ -72,15 +110,28 @@ class dpyfsConfig:
             self.configSection = section
         # Read the config options from the section. Need a try catch with better
         # error handling here.
+        logging.debug("Read from config file:")
         for key, value in self.tmpConfig.items(self.configSection):
             setattr(self, key, value)
+            logging.debug("  %s = %s" % (key, value))
 
     # Create an IP address for the webserver to use
     def getIP(self):
-        return web.net.validip("%s:%d" % (self.ipaddr, self.port))
+        return web.net.validip("%s:%s" % (self.ipaddr, self.port))
+    
+    # Grab the blockSize and convert to bytes from kilobytes
+    def getBlockSize(self):
+        return int(blocksize) * 1024
+    
+    # Grab the storage directory (make absolute path if needed)
+    def getStorageDir(self):
+        # FIXME: Make this convert to absolute path if necessary
+        return self.storagedir
 
 ### MAIN #######################################################################
 def main():
+    global config
+    
     # Turn on verbose logging.  I'll make this config driven at a future date.
     logging.basicConfig(level=logging.DEBUG)
 
@@ -89,7 +140,7 @@ def main():
     argparser.add_argument('--configFile', help = "Configuration file to read from")
     argparser.add_argument('--configSection', help = "Section in the configuration file to use")
     args = argparser.parse_args()
-    logging.debug('Argument datastructure: \n%s' % (str(args)))
+    logging.debug('Argument datastructure: \n    %s' % (str(args)))
 
     # Parse the config file.
     if args.configFile is not None:
