@@ -40,7 +40,24 @@ class info:
 # Controller class for accessing file chunks.
 class data:
     def GET(self, hashMD5, hashSHA1):
-        return "No data here currently."
+        # Build the path and read the file
+        path = "%s/" % (config.getStorageDir())
+        for i in range(0, len(hashMD5), 3):
+            path += "%s/" % (hashMD5[i:i+3])
+        path += "%s.obj" % (hashSHA1)
+        ## Should try catch around this file read...
+        if not os.path.isfile(path):
+            logging.info("File not found: %s" % (path))
+            return web.notfound()
+        chunk = open(path, 'rb').read()
+        # Verify the sums
+        mdfive = hashlib.md5(chunk).hexdigest()
+        shaone = hashlib.sha1(chunk).hexdigest()
+        # Return the chunk
+        if mdfive == hashMD5 and shaone == hashSHA1:
+            web.header("Content-Type", "application/octet-stream")
+            return chunk
+        return web.internalerror()
 
     def PUT(self, hashMD5, hashSHA1):
         global config
@@ -83,10 +100,10 @@ class data:
         result += "  SHA1: %s\n" % (hashSHA1)
         result += "Calculated sums: %d\n" % (len(chunk))
         result += "  MD5:  %s\n" % (mdfive)
-        result += "  MD5:  %s\n" % (shaone)
+        result += "  SHA1: %s\n" % (shaone)
         result += "Verified sums: %s\n" % (path)
         result += "  MD5:  %s\n" % (verifyMdfive)
-        result += "  MD5:  %s" % (verifyShaone)
+        result += "  SHA1: %s" % (verifyShaone)
         return result
 
     def DELETE(self, hashMD5, hashSHA1):
