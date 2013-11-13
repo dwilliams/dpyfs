@@ -64,7 +64,8 @@ class data:
     def PUT(self, hashMD5, hashSHA1):
         global config
         # Grab the chunk and calc the sums
-        chunk = web.input(file={})['file'].value
+        ## Do I want to check the Content-Type for application/octet-stream here?
+        chunk = web.data()
         if len(chunk) != config.getBlockSize():
             # The chunk is wrong.  Return a 400 bad request error. Log info
             # about the remote in the future.
@@ -158,11 +159,11 @@ class dpyfsConfig:
     # Create an IP address for the webserver to use
     def getIP(self):
         return web.net.validip("%s:%s" % (self.ipaddr, self.port))
-    
+
     # Grab the blockSize and convert to bytes from kilobytes
     def getBlockSize(self):
         return int(self.blocksize) * 1024
-    
+
     # Grab the storage directory (make absolute path if needed)
     def getStorageDir(self):
         # FIXME: Make this convert to absolute path if necessary
@@ -171,7 +172,7 @@ class dpyfsConfig:
 ### MAIN #######################################################################
 def main():
     global config
-    
+
     # Turn on verbose logging.  I'll make this config driven at a future date.
     logging.basicConfig(level=logging.DEBUG)
 
