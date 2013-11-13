@@ -11,6 +11,10 @@ import ConfigParser
 import hashlib
 import web
 import os
+import platform
+
+if platform.system() == 'Windows':
+    import ctypes
 
 ### GLOBALS ####################################################################
 config = None
@@ -21,10 +25,35 @@ def notFound():
     return web.notfound("<html><body><h1>404 Not Found</h1>\n"
                         "<p>Somethin's amiss.  Might want to check them URLs again.</p></body></html>")
 
-# View function for a little internal error love
+# View function for a lovely little internal error
 def internalError():
     return web.internalerror("<html><body><h1>500 Internal Server Error</h1>\n"
                              "<p>I guess I've lost my tools in my hands again.</p></body></html>")
+
+# Helper function to get free space and total space information
+def diskSpace(path):
+    freespace = 0
+    freespacenonsuper = 0
+    totalspace = 0
+    # If we're on Windows
+    if platform.system() == 'Windows':
+        freespace = ctypes.c_ulonglong(0)
+        freespacenonsuper = ctypes.c_ulonglong(0)
+        totalspace = ctypes.c_ulonglong(0)
+        # NOTE: totalspace here is the total space available to the user, not
+        #       total space on the disk.
+        ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(path),
+                                                   ctypes.pointer(freespacenonsuper),
+                                                   ctypes.pointer(totalspace),
+                                                   ctypes.pointer(freespace))
+    else:
+        # We're on a decent system...
+        stat = os.statvfs(path)
+        freespace = st.f_bfree * st.f_frsize
+        freespacenonsuper = st.f_bavail * st.f_frsize
+        totalspace = st.f_blocks * f_frsize
+    # return a tuple of the yummy info
+    return (freespace.value, freespacenonsuper.value, totalspace.value)
 
 ### CLASSES ####################################################################
 # Controller class for redirecting the root to another place
@@ -35,11 +64,36 @@ class index:
 # Controller class for infomation display pages.
 class info:
     def GET(self):
-        return "Hello World"
+        global config
+        path = "%s/" % (config.getStorageDir())
+        spacefree, spacefreenonsuper, spacetotal = diskSpace(path)
+        print "SF:   %s\nSFNS: %s\nTS:   %s" % (spacefree, spacefreenonsuper, spacetotal)
+        try:
+            percentfree = 100 * (float(spacefree) / spacetotal)
+        except ZeroDivisionError:
+            percentfree = 0
+        try:
+            percentused = 100 * (float(spacetotal - spacefree) / spacetotal)
+        except ZeroDivisionError:
+            percentfree = 0
+        try:
+            percentfreenonsuper = 100 * (float(spacefreenonsuper) / spacetotal)
+        except ZeroDivisionError:
+            percentfree = 0
+        result = "<html><body><h1>dpyfs Storage Daemon</h1>\n"
+        result += "<h3>Diskspace:</h3>\n"
+        result += "Total Size:   %d<br />\n" % (spacetotal)
+        result += "Free Size:    %d<br />\n" % (spacefree)
+        result += "Free Size:    %d (non-superuser)<br />\n" % (spacefreenonsuper)
+        result += "Percent Free: %d<br />\n" % (percentfree)
+        result += "Percent Free: %d (non-superuser)<br />\n" % (percentfreenonsuper)
+        result += "Percent Used: %d<br />\n" % (percentused)
+        return result
 
 # Controller class for accessing file chunks.
 class data:
     def GET(self, hashMD5, hashSHA1):
+        global config
         # Build the path and read the file
         path = "%s/" % (config.getStorageDir())
         for i in range(0, len(hashMD5), 3):
@@ -101,6 +155,7 @@ class data:
         return web.internalerror()
 
     def DELETE(self, hashMD5, hashSHA1):
+        global config
         # Build the path and read the file
         path = "%s/" % (config.getStorageDir())
         for i in range(0, len(hashMD5), 3):
