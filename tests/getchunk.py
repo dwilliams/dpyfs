@@ -16,7 +16,7 @@ import hashlib
 ### MAIN #######################################################################
 def main():
     # Parse the command line arguments.
-    argparser = argparse.ArgumentParser(description = "The storage daemon for the dpyfs project.")
+    argparser = argparse.ArgumentParser(description = "A quick script to get a test chunk from the storage server.")
     argparser.add_argument('--host', help = "Storage daemon host address to send to")
     argparser.add_argument('--port', type=int, help = "Storage daemon host port to send to")
     argparser.add_argument('md5', help = "Chunk to send")

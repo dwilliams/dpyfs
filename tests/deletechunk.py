@@ -1,7 +1,7 @@
 #!/usr/local/bin/python
 
-# postchunk.py
-# A quick script to post a test chunk to the storage server.
+# deletechunk.py
+# A quick script to delete a test chunk from the storage server.
 # Daniel Williams <dwilliams@port8080.net>
 
 ### IMPORTS ####################################################################
@@ -16,26 +16,21 @@ import hashlib
 ### MAIN #######################################################################
 def main():
     # Parse the command line arguments.
-    argparser = argparse.ArgumentParser(description = "A quick script to post a test chunk to the storage server.")
+    argparser = argparse.ArgumentParser(description = "A quick script to delete a test chunk from the storage server.")
     argparser.add_argument('--host', help = "Storage daemon host address to send to")
     argparser.add_argument('--port', type=int, help = "Storage daemon host port to send to")
-    argparser.add_argument('filename', help = "Chunk to send")
+    argparser.add_argument('md5', help = "Chunk to send")
+    argparser.add_argument('sha1', help = "Chunk to send")
     args = argparser.parse_args()
     
     # Build the URL and request data
-    chunk = open(args.filename, 'rb').read()
+    url = "http://%s:%d/data/%s/%s" % (args.host, args.port, args.md5, args.sha1)
+    print "Requested sums:"
+    print "  MD5:  %s\n  SHA1: %s" % (args.md5, args.sha1)
     
-    mdfive = hashlib.md5(chunk)
-    shaone = hashlib.sha1(chunk)
+    r = requests.delete(url)
     
-    url = "http://%s:%d/data/%s/%s" % (args.host, args.port, mdfive.hexdigest(), shaone.hexdigest())
-    files = {'file': chunk}
-    
-    print "MD5:  %s\nSHA1: %s" % (mdfive.hexdigest(), shaone.hexdigest())
-    
-    r = requests.put(url, files=files)
-    
-    print r.text
+    print "Result: %s" % (r.text)
 
 if __name__ == "__main__":
     main()
