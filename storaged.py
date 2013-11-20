@@ -35,6 +35,7 @@ def diskSpace(path):
     freespace = 0
     freespacenonsuper = 0
     totalspace = 0
+    print "diskSpace(%s): platform = %s" % (path, platform.system())
     # If we're on Windows
     if platform.system() == 'Windows':
         freespace = ctypes.c_ulonglong(0)
@@ -65,7 +66,7 @@ class index:
 class info:
     def GET(self):
         global config
-        path = "%s/" % (config.getStorageDir())
+        path = config.getStorageDir()
         spacefree, spacefreenonsuper, spacetotal = diskSpace(path)
         print "SF:   %s\nSFNS: %s\nTS:   %s" % (spacefree, spacefreenonsuper, spacetotal)
         try:
@@ -75,11 +76,11 @@ class info:
         try:
             percentused = 100 * (float(spacetotal - spacefree) / spacetotal)
         except ZeroDivisionError:
-            percentfree = 0
+            percentused = 0
         try:
             percentfreenonsuper = 100 * (float(spacefreenonsuper) / spacetotal)
         except ZeroDivisionError:
-            percentfree = 0
+            percentfreenonsuper = 0
         result = "<html><body><h1>dpyfs Storage Daemon</h1>\n"
         result += "<h3>Diskspace:</h3>\n"
         result += "Total Size:   %d<br />\n" % (spacetotal)
@@ -222,7 +223,7 @@ class dpyfsConfig:
     # Grab the storage directory (make absolute path if needed)
     def getStorageDir(self):
         # FIXME: Make this convert to absolute path if necessary
-        return self.storagedir
+        return os.path.abspath(self.storagedir)
 
 ### MAIN #######################################################################
 def main():
