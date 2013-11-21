@@ -2,8 +2,8 @@
 % Daniel Williams <dwilliams@port8080.net>
 
 % Command for compiling:
-% latex storaged && latex storaged && makeglossaries storaged && makeindex storaged
-%                && latex storaged && latex storaged && dvipdfm storaged
+% latex storaged && latex storaged && makeglossaries storaged && makeindex storaged && latex storaged && latex storaged
+%                && dvipdfm storaged
 % Initially I don't need the makeglossaries or makeindex, so I'll use this for now:
 % latex storaged && latex storaged && dvipdfm storaged
 
@@ -22,6 +22,86 @@
 % Section "Requirements"
 \section{Requirements}
 
+\subsection{Store Chunks}
+
+\begin{itemize}
+\item
+Set chunk size (user defined in config)
+
+\item
+Hash chunks for integrity checks
+
+\item
+Use hashes for names (md5-path, sha1-file)
+
+\item
+File backed
+
+\item
+Integrity check function for chunks
+\end{itemize}
+
+\subsection{RESTful Interface}
+
+\subsubsection{Resource: info}
+
+\begin{itemize}
+\item
+Disk stats
+\begin{itemize}
+\item
+free space
+
+\item
+total space
+
+\item
+inodes free
+
+\item
+inodes total
+\end{itemize}
+
+\item
+number of chunks
+
+\item
+GET only
+\end{itemize}
+
+\subsubsection{Resource: data}
+
+\begin{itemize}
+\item
+GET chunk
+
+\item
+PUT chunk (error on hash mismatch)
+
+\item
+DELETE chunk
+
+\item
+POST chunk (Should I do this for good measure?  I don't think I need it.)
+\end{itemize}
+
+\subsubsection{HTTPS Support}
+
+\begin{itemize}
+\item
+Certificate Authority support?  Leverage something similar to puppet?
+
+\item
+Implement this in the future
+\end{itemize}
+
+\subsubsection{Authentication}
+
+\begin{itemize}
+\item
+Implement this in the future
+\end{itemize}
+
 % Section "Design Details"
 \section{Design Details}
 
@@ -31,7 +111,7 @@
 % Section "Users Guide" aka how to configue this thing
 \section{Users Guide}
 
-% These sections, especially the "Guide" sections, will eventually be used for a
-% bigger document for the system as a whole.
+% These sections, especially the "Guide" sections, will eventually be used for a bigger document for the system as a
+% whole.
 
 \end{document}
