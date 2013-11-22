@@ -26,63 +26,77 @@
 
 \begin{itemize}
 \item
-Set chunk size (user defined in config)
+Set chunk size - The size of each chunk stored will be of the same and will be set in the configuration file.
 
 \item
-Hash chunks for integrity checks
+Hash chunks for integrity checks - Each chunk will be hashed and the hashes will be checked against the request to
+verify the itegrity of the chunk.
 
 \item
-Use hashes for names (md5-path, sha1-file)
+File backed - All data chunks will be stored in files on the native file system.
 
 \item
-File backed
+One chunk per file - Each file will store one chunk and no other data.
 
 \item
-Integrity check function for chunks
+Use hashes for names (md5-path, sha1-file) - The chunk files will be named using the hashes of the file.  The path will
+use the MD5 hash and the name will use the SHA1 hash.
+
+\item
+Split path hash at three chars - The hash used for the path will be split every three chars
+(i.e. \verb=???/???/???/???/???/???/???/???/???/???/??/<name>.obj= where ??? is a part of the path hash).
+
+\item
+Integrity check function for chunks - A function that can be initiated periodically will be supplied to check the
+integrity of each chunk.
 \end{itemize}
 
 \subsection{RESTful Interface}
 
-\subsubsection{Resource: info}
+\subsubsection{Resource: /info}
 
 \begin{itemize}
 \item
-Disk stats
+Disk statistics
 \begin{itemize}
 \item
-free space
+free space - How many bytes on the storage volume are available to the service.  This should be displayed in megabytes
+(MB).
 
 \item
-total space
+total space - How many bytes the storage volume contains.  This should be displayed in megabytes (MB).
 
 \item
-inodes free
-
-\item
-inodes total
+free space percentage - What percent of the storage volume is available to the service.
 \end{itemize}
 
 \item
-number of chunks
+number of chunks - How many chunks are stored.  This will be updated by the create, delete, and integrity check
+functions.
 
 \item
 GET only
+
+\item
+multiple formats - The information returned should be returned in multiple formats (html, json, etc.) based on the HTTP
+"Accept" header.
 \end{itemize}
 
-\subsubsection{Resource: data}
+\subsubsection{Resource: /data}
 
 \begin{itemize}
 \item
-GET chunk
+GET chunk - Allow retrieval of a chunk using the HTTP GET verb and the md5 and sha1 values of the chunk.
 
 \item
-PUT chunk (error on hash mismatch)
+PUT chunk (error on hash mismatch) - Allow deposit of a chunk using the HTTP PUT verb and the md5 and sha1 values of the
+chunk.  If the md5 and sha1 hashes mismatch, return an error and do not store the chunk.
 
 \item
-DELETE chunk
+DELETE chunk - Allow deletion of a chunk using the HTTP DELETE verb and the md5 and sha1 values of the chunk.
 
 \item
-POST chunk (Should I do this for good measure?  I don't think I need it.)
+Don't POST chunk - Currently, the HTTP POST verb will not be supported.
 \end{itemize}
 
 \subsubsection{HTTPS Support}
@@ -92,14 +106,14 @@ POST chunk (Should I do this for good measure?  I don't think I need it.)
 Certificate Authority support?  Leverage something similar to puppet?
 
 \item
-Implement this in the future
+Implement this in the future.
 \end{itemize}
 
 \subsubsection{Authentication}
 
 \begin{itemize}
 \item
-Implement this in the future
+Implement this in the future.
 \end{itemize}
 
 % Section "Design Details"
