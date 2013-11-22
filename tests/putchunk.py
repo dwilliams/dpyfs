@@ -29,7 +29,7 @@ def main():
     shaone = hashlib.sha1(chunk)
 
     url = "http://%s:%d/data/%s/%s" % (args.host, args.port, mdfive.hexdigest(), shaone.hexdigest())
-    headers = {'content-type': 'application/octet-stream'}
+    headers = {'Content-Type': 'application/octet-stream'}
 
     print "MD5:  %s\nSHA1: %s" % (mdfive.hexdigest(), shaone.hexdigest())
 

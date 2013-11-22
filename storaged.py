@@ -56,6 +56,57 @@ def diskSpace(path):
     # return a tuple of the yummy info
     return (freespace.value / (1024 * 1024), freespacenonsuper.value / (1024 * 1024), totalspace.value / (1024 * 1024))
 
+# Helper function to check the chunks in the storageDir and set the counters
+def checkChunks(path):
+    chunkCounter = 0
+    for root, dir, files in os.walk(path):
+        logging.debug("checkChunks: root:  %s" % (root))
+        logging.debug("checkChunks: dir:   %s" % (str(dir)))
+        logging.debug("checkChunks: files: %s" % (str(files)))
+        for curfile in files:
+            isChunkGood = True
+            logging.debug("checkChunks:    curfile: %s" % (curfile))
+            # Grab the chunk
+            chunk = open(os.path.abspath("%s/%s" % (root, curfile)), 'rb').read()
+            # check it's size
+            if len(chunk) != config.getBlockSize():
+                # The chunk is the wrong size.
+                logging.warning("Somebody's touched the file system again.")
+                isChunkGood = False
+            # hash it
+            mdfive = hashlib.md5(chunk).hexdigest()
+            shaone = hashlib.sha1(chunk).hexdigest()
+            # check the path
+            curpath = "%s/" % (config.getStorageDir())
+            for i in range(0, len(mdfive), 3):
+                curpath += "%s/" % (mdfive[i:i+3])
+            if(os.path.abspath(curpath) != os.path.abspath(root)):
+                # The chunk hashed badly.
+                logging.warning("Somebody's touched the file system again.")
+                logging.debug("  root:    %s" % (os.path.abspath(root)))
+                logging.debug("  curpath: %s" % (os.path.abspath(curpath)))
+                isChunkGood = False
+            # check the filename
+            if(curfile != ("%s.obj" % (shaone))):
+                # The chunk hashed badly.
+                logging.warning("Somebody's touched the file system again.")
+                logging.debug("  curfile: %s" % (curfile))
+                logging.debug("  shaone:  %s" % (shaone))
+                isChunkGood = False
+            # if it's good, increment counter
+            if(isChunkGood):
+                chunkCounter += 1
+            # if it's bad delete the chunk
+            else:
+                logging.warning("Cleaning up other's meddling")
+                os.remove("%s/%s" % (root, curfile))
+    # delete any empty directories (should have function in os module that does this)
+    try:
+        os.removedirs(path)
+    except OSError:
+        pass
+    return chunkCounter
+
 ### CLASSES ############################################################################################################
 # Controller class for redirecting the root to another place
 class index:
@@ -120,11 +171,14 @@ class data:
         if(contentType != 'application/octet-stream'):
             # Not an octet stream, log a warning.  We'll still store the chunk if it passes everything else.
             logging.warning("Somebody's giving me something I don't like.")
+            logging.debug("PUT Content-Type: %s" % (contentType))
         # Grab the chunk and calc the sums
         chunk = web.data()
         if len(chunk) != config.getBlockSize():
             # The chunk is wrong.  Return a 400 bad request error. Log info about the remote in the future.
             logging.warning("Somebody's passing around a bad brownie.")
+            logging.debug("actual chunk size: %d" % (len(chunk)))
+            logging.debug("config chunk size: %d" % (config.getBlockSize()))
             return web.badrequest()
         mdfive = hashlib.md5(chunk).hexdigest()
         shaone = hashlib.sha1(chunk).hexdigest()
@@ -258,7 +312,9 @@ def main():
     app = web.application(urls, globals())
     app.notfound = notFound
     app.internalerror = internalError
-    # Should update this to use web.net.validip()
+    # Check chunks if there are any in the storage directory
+    numChunks = checkChunks(config.getStorageDir())
+    # Run the webserver
     web.httpserver.runsimple(app.wsgifunc(), config.getIP())
 
 if __name__ == "__main__":
