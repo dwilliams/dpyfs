@@ -4,7 +4,7 @@
 # A python based simple storage daemon for the dpyfs project.
 # Daniel Williams <dwilliams@port8080.net>
 
-### IMPORTS ####################################################################
+### IMPORTS ############################################################################################################
 import logging
 import argparse
 import ConfigParser
@@ -12,14 +12,15 @@ import hashlib
 import web
 import os
 import platform
+import json
 
 if platform.system() == 'Windows':
     import ctypes
 
-### GLOBALS ####################################################################
+### GLOBALS ############################################################################################################
 config = None
 
-### FUNCTIONS ##################################################################
+### FUNCTIONS ##########################################################################################################
 # View function for the good ol' 404
 def notFound():
     return web.notfound("<html><body><h1>404 Not Found</h1>\n"
@@ -30,7 +31,7 @@ def internalError():
     return web.internalerror("<html><body><h1>500 Internal Server Error</h1>\n"
                              "<p>I guess I've lost my tools in my hands again.</p></body></html>")
 
-# Helper function to get free space and total space information
+# Helper function to get free space and total space information (in megabytes)
 def diskSpace(path):
     freespace = 0
     freespacenonsuper = 0
@@ -41,8 +42,7 @@ def diskSpace(path):
         freespace = ctypes.c_ulonglong(0)
         freespacenonsuper = ctypes.c_ulonglong(0)
         totalspace = ctypes.c_ulonglong(0)
-        # NOTE: totalspace here is the total space available to the user, not
-        #       total space on the disk.
+        # NOTE: totalspace here is the total space available to the user, not total space on the disk.
         ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(path),
                                                    ctypes.pointer(freespacenonsuper),
                                                    ctypes.pointer(totalspace),
@@ -54,9 +54,9 @@ def diskSpace(path):
         freespacenonsuper = st.f_bavail * st.f_frsize
         totalspace = st.f_blocks * f_frsize
     # return a tuple of the yummy info
-    return (freespace.value, freespacenonsuper.value, totalspace.value)
+    return (freespace.value / (1024 * 1024), freespacenonsuper.value / (1024 * 1024), totalspace.value / (1024 * 1024))
 
-### CLASSES ####################################################################
+### CLASSES ############################################################################################################
 # Controller class for redirecting the root to another place
 class index:
     def GET(self):
@@ -67,28 +67,25 @@ class info:
     def GET(self):
         global config
         path = config.getStorageDir()
-        spacefree, spacefreenonsuper, spacetotal = diskSpace(path)
-        print "SF:   %s\nSFNS: %s\nTS:   %s" % (spacefree, spacefreenonsuper, spacetotal)
+        info = {}
+        info['spacefree'], info['spacefreenonsuper'], info['spacetotal'] = diskSpace(path)
+        logging.debug("SF:   %s\nSFNS: %s\nTS:   %s" % (info['spacefree'], info['spacefreenonsuper'], info['spacetotal']))
         try:
-            percentfree = 100 * (float(spacefree) / spacetotal)
+            info['percentfreenonsuper'] = 100 * (float(info['spacefreenonsuper']) / info['spacetotal'])
         except ZeroDivisionError:
-            percentfree = 0
-        try:
-            percentused = 100 * (float(spacetotal - spacefree) / spacetotal)
-        except ZeroDivisionError:
-            percentused = 0
-        try:
-            percentfreenonsuper = 100 * (float(spacefreenonsuper) / spacetotal)
-        except ZeroDivisionError:
-            percentfreenonsuper = 0
-        result = "<html><body><h1>dpyfs Storage Daemon</h1>\n"
-        result += "<h3>Diskspace:</h3>\n"
-        result += "Total Size:   %d<br />\n" % (spacetotal)
-        result += "Free Size:    %d<br />\n" % (spacefree)
-        result += "Free Size:    %d (non-superuser)<br />\n" % (spacefreenonsuper)
-        result += "Percent Free: %d<br />\n" % (percentfree)
-        result += "Percent Free: %d (non-superuser)<br />\n" % (percentfreenonsuper)
-        result += "Percent Used: %d<br />\n" % (percentused)
+            info['percentfreenonsuper'] = 0
+        contentType = web.ctx.env.get('HTTP_ACCEPT')
+        logging.debug("/info GET Content-Type: %s" % (contentType))
+        if(contentType == 'application/json'):
+            web.header('Content-Type', 'application/json')
+            result = json.dumps(info)
+        else:
+            web.header('Content-Type', 'text/html')
+            result = "<html><body><h1>dpyfs Storage Daemon</h1>\n"
+            result += "<h3>Diskspace:</h3>\n"
+            result += "Total Space:  %d MB<br />\n" % (info['spacetotal'])
+            result += "Free Space:   %d MB<br />\n" % (info['spacefreenonsuper'])
+            result += "Percent Free: %d%%<br />\n" % (info['percentfreenonsuper'])
         return result
 
 # Controller class for accessing file chunks.
@@ -118,12 +115,15 @@ class data:
 
     def PUT(self, hashMD5, hashSHA1):
         global config
+        # Make sure we're getting the right content-type
+        contentType = web.ctx.env.get('CONTENT-TYPE')
+        if(contentType != 'application/octet-stream'):
+            # Not an octet stream, log a warning.  We'll still store the chunk if it passes everything else.
+            logging.warning("Somebody's giving me something I don't like.")
         # Grab the chunk and calc the sums
-        ## Do I want to check the Content-Type for application/octet-stream here?
         chunk = web.data()
         if len(chunk) != config.getBlockSize():
-            # The chunk is wrong.  Return a 400 bad request error. Log info
-            # about the remote in the future.
+            # The chunk is wrong.  Return a 400 bad request error. Log info about the remote in the future.
             logging.warning("Somebody's passing around a bad brownie.")
             return web.badrequest()
         mdfive = hashlib.md5(chunk).hexdigest()
@@ -225,7 +225,7 @@ class dpyfsConfig:
         # FIXME: Make this convert to absolute path if necessary
         return os.path.abspath(self.storagedir)
 
-### MAIN #######################################################################
+### MAIN ###############################################################################################################
 def main():
     global config
 
