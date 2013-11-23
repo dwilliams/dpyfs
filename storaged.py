@@ -19,6 +19,7 @@ if platform.system() == 'Windows':
 
 ### GLOBALS ############################################################################################################
 config = None
+numChunks = 0
 
 ### FUNCTIONS ##########################################################################################################
 # View function for the good ol' 404
@@ -115,10 +116,13 @@ class index:
 
 # Controller class for infomation display pages.
 class info:
-    def GET(self):
-        global config
+    def GET(self, parameterString = None):
+        global config, numChunks
         path = config.getStorageDir()
-        info = {}
+        # If /info/integritycheck is called, run the integrity check function.
+        if(parameterString == 'integritycheck'):
+            numChunks = checkChunks(path)
+        info = {'numchunks': numChunks}
         info['spacefree'], info['spacefreenonsuper'], info['spacetotal'] = diskSpace(path)
         logging.debug("SF:   %s\nSFNS: %s\nTS:   %s" % (info['spacefree'], info['spacefreenonsuper'], info['spacetotal']))
         try:
@@ -137,6 +141,7 @@ class info:
             result += "Total Space:  %d MB<br />\n" % (info['spacetotal'])
             result += "Free Space:   %d MB<br />\n" % (info['spacefreenonsuper'])
             result += "Percent Free: %d%%<br />\n" % (info['percentfreenonsuper'])
+            result += "Number of Chunks: %d<br />" % (info['numchunks'])
         return result
 
 # Controller class for accessing file chunks.
@@ -165,7 +170,7 @@ class data:
         return web.internalerror()
 
     def PUT(self, hashMD5, hashSHA1):
-        global config
+        global config, numChunks
         # Make sure we're getting the right content-type
         contentType = web.ctx.env.get('CONTENT-TYPE')
         if(contentType != 'application/octet-stream'):
@@ -204,13 +209,14 @@ class data:
         # If the sums match, return a 200 OK (return the sums for now)
         # otherwise return a 500 error (we have a file that doesn't match)
         if verifyMdfive == mdfive or verifyShaone == shaone:
+            numChunks += 1
             return "Success"
         # Return an error here
         logging.error("There's a skeleton in my closet! PUT - %s" % (path))
         return web.internalerror()
 
     def DELETE(self, hashMD5, hashSHA1):
-        global config
+        global config, numChunks
         # Build the path and read the file
         path = "%s/" % (config.getStorageDir())
         for i in range(0, len(hashMD5), 3):
@@ -228,6 +234,7 @@ class data:
         # task that'll be run by cron.
         if mdfive == hashMD5 and shaone == hashSHA1:
             os.remove(path)
+            numChunks -= 1
             return "Success"
         # Return an error here
         logging.error("There's a skeleton in my closet! DELETE - %s" % (path))
@@ -281,7 +288,7 @@ class dpyfsConfig:
 
 ### MAIN ###############################################################################################################
 def main():
-    global config
+    global config, numChunks
 
     # Turn on verbose logging.  I'll make this config driven at a future date.
     logging.basicConfig(level=logging.DEBUG)
@@ -307,7 +314,8 @@ def main():
     # Setup the webserver for handling requests.
     urls = ('/', 'index',
             '/data/([0-9,a-f,A-F]+)/([0-9,a-f,A-F]+)', 'data',
-            '/info', 'info')
+            '/info', 'info',
+            '/info/(.*)', 'info')
 
     app = web.application(urls, globals())
     app.notfound = notFound
