@@ -104,8 +104,8 @@ def checkChunks(path):
     # delete any empty directories (should have function in os module that does this)
     try:
         os.removedirs(path)
-    except OSError:
-        pass
+    except OSError as ex:
+        logging.debug("Failed to remove a directory: %s" % (ex))
     return chunkCounter
 
 ### CLASSES ############################################################################################################
