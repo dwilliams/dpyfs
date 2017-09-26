@@ -38,6 +38,11 @@ def send_css(path):
 def send_cors(path):
     return send_from_directory('static/cors', path)
 
+@app.route('/download/')
+def list_files():
+    filename_list = list(test_file_uploads.keys())
+    return jsonify(filename_list)
+
 @app.route('/download/<path:path>')
 def handle_download(path):
     # FIXME: Allow 'Range' requests to grab specific parts of files.
