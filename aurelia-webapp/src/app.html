@@ -1,13 +1,14 @@
 <template>
   <require from="bootstrap/css/bootstrap.css"></require>
   <require from="./styles.css"></require>
-  <require from="./contact-list"></require>
+  <require from="./file-list"></require>
+  <require from="./upload-bar"></require>
 
   <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
     <div class="navbar-header">
       <a class="navbar-brand" href="#">
         <i class="fa fa-user"></i>
-        <span>Contacts</span>
+        <span>Files</span>
       </a>
     </div>
   </nav>
@@ -16,8 +17,11 @@
 
   <div class="container">
     <div class="row">
-      <contact-list class="col-md-4"></contact-list>
+      <file-list class="col-md-4"></file-list>
       <router-view class="col-md-8"></router-view>
+    </div>
+    <div class="row">
+      <upload-bar class="col-md-12"></upload-bar>
     </div>
   </div>
 </template>

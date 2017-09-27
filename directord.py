@@ -18,6 +18,13 @@ MAX_CHUNK_SIZE = 1048576 # 1MB Max chunk size
 test_file_uploads = {}
 
 ### FUNCTIONS ##########################################################################################################
+# For now, force no caching of files to prevent the app-bundle.js from getting buggered by the cache
+# NOTE: For some stupid reason, firefox keeps pulling that file from cache, even with a CTRL+F5...
+@app.after_request
+def add_headers(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 @app.route('/')
 def hello():
     return app.send_static_file('index.html')
@@ -26,9 +33,9 @@ def hello():
 def send_imgs(path):
     return send_from_directory('static/img', path)
 
-@app.route('/js/<path:path>')
+@app.route('/scripts/<path:path>')
 def send_js(path):
-    return send_from_directory('static/js', path)
+    return send_from_directory('static/scripts', path)
 
 @app.route('/css/<path:path>')
 def send_css(path):

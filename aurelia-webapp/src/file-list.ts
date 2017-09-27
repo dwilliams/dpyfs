@@ -27,19 +27,49 @@ import {HttpClient} from 'aurelia-fetch-client';
 // }
 
 
-@inject(HttpClient)
-export class FileList {
+// @inject(HttpClient)
+// export class FileList {
+// 
+    // constructor(http) {
+        // this.http = http;
+    // }
+// 
+    // getSomeJson() {
+        // this.http.fetch('something')
+            // .then(response => response.json())
+            // .then(data => {
+                    // console.log(data);
+            // })
+    // }
+// 
+//}
 
-    constructor(http) {
-        this.http = http;
-    }
+let httpClient = new HttpClient();
 
-    getSomeJson() {
-        this.http.fetch('something')
-            .then(response => response.json())
-            .then(data => {
-                    console.log(data);
-            })
-    }
+httpClient.configure(config => {
+  config
+    .withBaseUrl('/')
+    .withDefaults({
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'Fetch'
+      }
+    })
+    .withInterceptor({
+      request(request) {
+        console.log(`Requesting ${request.method} ${request.url}`);
+        return request;
+      },
+      response(response) {
+        console.log(`Received ${response.status} ${response.url}`);
+        return response;
+      }
+    });
+});
 
-}
+httpClient.fetch('download/')
+  .then(response => response.json())
+  .then(data => {
+    console.log(data.description);
+});
