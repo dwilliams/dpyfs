@@ -1,15 +1,35 @@
 #!/usr/bin/env python3
 
+# Running for dev: gunicorn --reload 'dpyfs_storage.app:get_app()'
+
 ### IMPORTS ###
+import io
 import os
+import uuid
+import mimetypes
+
 import falcon
+
+from dpyfs.chunk_stores.filesystem import ChunkStore
 
 ### GLOBALS ###
 BLOCK_SIZE_BYTES = 64 * 1024 # 64K
-STORAGE_DIR = os.path.abspath("./data/") # Fix these later
+STORAGE_DIR = os.path.abspath("/tmp/data/") # Fix these later
 CONFIG_DIR = os.path.abspath("./etc/dpyfs/") # Fix these later
 
 ### FUNCTIONS ###
+def create_app(chunk_store):
+    app = falcon.API()
+    
+    app.add_route('/', RootResource())
+    app.add_route('/info', InfoResource())
+    app.add_route('/integritycheck', IntegrityCheckResource())
+    app.add_route('/data', DataResource(chunk_store))
+    return app
+
+def get_app():
+    chunk_store = ChunkStore(storage_path=STORAGE_DIR)
+    return create_app(chunk_store)
 
 ### CLASSES ###
 # Paths:
@@ -37,11 +57,14 @@ class IntegrityCheckResource(object):
 
 class DataResource(object):
     # This is used to store and retrieve the chunks of data.
-    # on_post: store chunk
+    _CHUNK_SIZE_BYTES = 4096
+    
+    def __init__(self, chunk_store):
+        self._chunk_store = chunk_store
+    
     # on_get: retrieve chunk
-    pass
-
-### MAIN ###
-app = application = falcon.API()
-
-app.add_route('/', RootResource())
+    # on_post: store chunk
+    def on_post(self, req, resp):
+        name = self._chunk_store.save(req.bounded_stream.read())
+        resp.status = falcon.HTTP_CREATED
+        resp.location = '/data/{}'.format(name)
