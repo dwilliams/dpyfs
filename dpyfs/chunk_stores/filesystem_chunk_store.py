@@ -10,8 +10,7 @@ import hashlib
 ### FUNCTIONS ###
 
 ### CLASSES ###
-
-class ChunkStore(object):
+class FilesystemChunkStore(object):
     def __init__(self, storage_path, chunk_max_bytes=65536, fopen=io.open):
         self._storage_path = storage_path
         self._chunk_max_bytes = chunk_max_bytes

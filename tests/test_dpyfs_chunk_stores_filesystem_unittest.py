@@ -8,7 +8,7 @@ import unittest
 
 from pyfakefs import fake_filesystem_unittest
 
-from dpyfs.chunk_stores.filesystem import ChunkStore
+from dpyfs.chunk_stores import FilesystemChunkStore
 
 ### GLOBALS ###
 CHUNK_SIZE = 65536
@@ -29,7 +29,7 @@ class TestChunkStore(fake_filesystem_unittest.TestCase):
 
         tmp_chunk_path = "{}{}/{}-{}.chunk".format(MOCK_STORAGE_PATH, tmp_md5_digest[0:4], tmp_md5_digest, tmp_sha512_digest)
 
-        dut = ChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, io.open)
+        dut = FilesystemChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, io.open)
 
         dut_sha512_digest, dut_md5_digest = dut.save(normal_chunk)
 
@@ -50,7 +50,7 @@ class TestChunkStore(fake_filesystem_unittest.TestCase):
         self.fs.create_file(tmp_chunk_path, contents=normal_chunk)
         self.assertTrue(os.path.exists(tmp_chunk_path))
 
-        dut = ChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, io.open) # Have to pass io.open post patching.
+        dut = FilesystemChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, io.open) # Have to pass io.open post patching.
 
         dut_chunk_data = dut.open(tmp_sha512_digest, tmp_md5_digest)
 

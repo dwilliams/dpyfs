@@ -8,7 +8,7 @@ import pytest
 
 from unittest.mock import MagicMock, mock_open, call
 
-from dpyfs.chunk_stores.filesystem import ChunkStore
+from dpyfs.chunk_stores import FilesystemChunkStore
 
 ### GLOBALS ###
 CHUNK_SIZE = 65536
@@ -42,13 +42,13 @@ def large_chunk(request):
     return request.param
 
 ### CLASSES ###
-class TestChunkStore(object):
+class TestFilesystemChunkStore(object):
     # Normal, full chunks
     def test_get_chunk_path(self, normal_chunk):
         tmp_sha512_digest = hashlib.sha512(normal_chunk).hexdigest()
         tmp_md5_digest = hashlib.md5(normal_chunk).hexdigest()
 
-        dut = ChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, mock_open())
+        dut = FilesystemChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, mock_open())
 
         tmp_chunk_path = "{}{}/{}-{}.chunk".format(MOCK_STORAGE_PATH, tmp_md5_digest[0:4], tmp_md5_digest, tmp_sha512_digest)
         dut_chunk_path = dut._get_chunk_path(tmp_sha512_digest, tmp_md5_digest)
@@ -60,7 +60,7 @@ class TestChunkStore(object):
         tmp_md5_digest = hashlib.md5(normal_chunk).hexdigest()
 
         mock_file_open = mock_open()
-        dut = ChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, mock_file_open)
+        dut = FilesystemChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, mock_file_open)
 
         dut_sha512_digest, dut_md5_digest = dut.save(normal_chunk)
 
@@ -76,7 +76,7 @@ class TestChunkStore(object):
         tmp_md5_digest = hashlib.md5(normal_chunk).hexdigest()
 
         mock_file_open = mock_open(read_data = normal_chunk)
-        dut = ChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, mock_file_open)
+        dut = FilesystemChunkStore(MOCK_STORAGE_PATH, CHUNK_SIZE, mock_file_open)
 
         dut_chunk_data = dut.open(tmp_sha512_digest, tmp_md5_digest)
 

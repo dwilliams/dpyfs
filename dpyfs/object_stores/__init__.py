@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ### IMPORTS ###
-from .filesystem_chunk_store import FilesystemChunkStore
+from chunking_object_store import ChunkingObjectStore
 
 ### GLOBALS ###
 
